@@ -217,11 +217,14 @@ def send_to_KG(payload_json: str, classification: str):
 
 # ---- Main Execution ----
 
+#Main program loop
 if __name__ == "__main__":
+    #Amount of cycles wanted
     NUM_CYCLES  = 5
     #Seconds
     CYCLE_DELAY = 1  
 
+    #List of sensors
     sensors = [
         SpindleTempSensor("spindle_temp"),
         VibrationSensor("vibration"),
@@ -229,10 +232,11 @@ if __name__ == "__main__":
         PositionEncoder("position"),
         VisionQCSensor("inspection"),
     ]
+
     #Tools
     atc = AutomaticToolChanger([1, 2, 3, 4, 5])
 
-# Machines
+#List of machines
 machines = [
     CNCMill("CNC_Mill_1", atc),
     RoboticArm("Robotic_Arm_1"),
@@ -240,8 +244,11 @@ machines = [
     InspectionSystem("Inspection_Station")
 ]
 
+#Instantiating factory using list of machines and sensory
 factory = CNCFactory(machines, sensors)
 
+#Loops through cycles
 for cycle in range(1, NUM_CYCLES + 1):
+    #Runs simulation cycle
     factory.run_cycle(cycle)
     time.sleep(CYCLE_DELAY)
