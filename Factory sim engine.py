@@ -85,6 +85,7 @@ class CNCMill(Machine):
 #Think about later
 class RoboticArm(Machine):
     def perform_operation(self, cycle_id: int):
+        #Randomises task from options in the list
         task = random.choice(["load_material", "unload_part", "assemble_component", "idle"])
         return {
             "robotic_arm_task": task
@@ -93,7 +94,7 @@ class RoboticArm(Machine):
 #Think about later
 class ConveyorBelt(Machine):
     def perform_operation(self, cycle_id: int):
-        # Simulate part movement and tracking
+        #Simulate part movement and tracking
         position = random.choice(["Station A", "Station B", "Inspection", "Exit"])
         part_id = f"PART-{1000 + cycle_id}"
         return {
@@ -104,6 +105,7 @@ class ConveyorBelt(Machine):
 #Think about later
 class InspectionSystem(Machine):
     def perform_operation(self, cycle_id: int):
+        #Decides if part is in good condition and to what degree
         decision = random.choice(["PASS", "FAIL"])
         confidence = round(random.uniform(0.7, 1.0), 2)
         return {
@@ -115,12 +117,14 @@ class InspectionSystem(Machine):
 """The section below takes inputs and transforms to document"""
 
 class SimulationMessage:
+    #All information listed in the format below
     def __init__(self, cycle_id: int, machine_data: dict, sensor_readings: dict):
         self.cycle_id = cycle_id
         self.timestamp = time.time()
         self.machine = machine_data
         self.sensors = sensor_readings
 
+    #Json output below
     def to_json(self):
         payload = {
             "cycle_id": self.cycle_id,
@@ -131,8 +135,8 @@ class SimulationMessage:
         return json.dumps(payload)
 
 #--------Engine--------
-"""This section manages creating the factory that holds the machines and sensors, it also has an option between simulation data
-and real data"""
+"""This section manages creating the factory that holds the machines and sensors, it also has an
+option between simulation data and real data"""
 
 #Creates CNC object containing machines and sensors
 class CNCFactory:
@@ -164,16 +168,16 @@ class CNCFactory:
             "inspection": "PASS",
         }
 
-
+    #Runs cycles for the simulaton
     def run_cycle(self, cycle_id: int):
-        # 1. Machine operations
+        #1. Machine operations (loops through machines and completes any operations)
         machine_data = {}
         for m in self.machines:
             machine_data.update(m.perform_operation(cycle_id))
 
-        # 2. Sensor readings
+        #2. Sensor readings (reads sensors or if real-data is over-riden then use that)
         sensor_readings = {}
-        # real-data override?
+        #Real-data override?
         real = self.get_data_source()
         if real:
             sensor_readings = {
@@ -187,7 +191,7 @@ class CNCFactory:
             for s in self.sensors:
                 sensor_readings[s.name] = s.read()
 
-        # 3. Package & send
+        #3. Package & send (returns packages)
         msg = SimulationMessage(cycle_id, machine_data, sensor_readings)
         classification = classify_state(sensor_readings, machine_data)
         send_to_KG(msg.to_json(), classification)
