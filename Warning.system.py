@@ -7,14 +7,15 @@ import statistics
 
 # --- Configuration ---
 WINDOW_SIZE = 10
-TEMP_THRESHOLD = 75       # °C threshold for immediate alert
-Z_SCORE_LIMIT = 2.5       # Z-score threshold for anomaly
+TEMP_THRESHOLD = 75  # °C threshold for immediate alert
+Z_SCORE_LIMIT = 2.5  # Z-score threshold for anomaly
 
 # Setup logging
 logging.basicConfig(filename='temperature_alerts.log', level=logging.INFO, format='%(asctime)s %(message)s')
 
 # Temperature history buffer per machine
 machine_temp_data = {}
+
 
 # --- Core Function: Detect Anomalies ---
 def detect_anomaly(machine_id, temp):
@@ -48,6 +49,7 @@ def detect_anomaly(machine_id, temp):
 
     return False, None
 
+
 # --- Alert Formatter ---
 def generate_alert(anomaly_data):
     alert = {
@@ -63,15 +65,27 @@ def generate_alert(anomaly_data):
     logging.info(f"ALERT: {alert_json}")
     print(alert_json)
 
+
 # --- Main Processor: Handle One Simulation Output Line ---
 def process_simulation_output(sim_json: str):
     try:
         data = json.loads(sim_json)
         temp = data.get("spindle_temp")
-        machine_id = data.get("machine", "CNC_Mill_1")  # fallback
 
         if temp is None:
             return  # Ignore if spindle_temp missing
+
+        # Identify machine_id from known keys in Azaan's JSON output
+        if "tool_id" in data:
+            machine_id = f"CNCMill_Tool{data['tool_id']}"
+        elif "robotic_arm_task" in data:
+            machine_id = "Robotic_Arm"
+        elif "conveyor_position" in data:
+            machine_id = "Conveyor_Belt"
+        elif "inspection_result" in data:
+            machine_id = "Inspection_System"
+        else:
+            machine_id = "Unknown_Machine"
 
         is_anomaly, anomaly_data = detect_anomaly(machine_id, temp)
         if is_anomaly:
@@ -80,11 +94,13 @@ def process_simulation_output(sim_json: str):
     except json.JSONDecodeError:
         print("⚠️ Skipped: Received malformed or non-JSON line.")
 
+
 # --- Main Listener: Read Azaan's Output via Pipe ---
 def main():
     print("🔍 Real-time analytics running. Waiting for simulation data...\n")
     for line in sys.stdin:
         process_simulation_output(line.strip())
+
 
 if __name__ == "__main__":
     main()
