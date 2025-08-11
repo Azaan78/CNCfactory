@@ -5,7 +5,7 @@ import time
 import json
 import os
 
-#--------Compnonents and sensor classes--------
+#-------- Compnonents and sensor classes --------
 """In this section there is the senor class which acts as a base template for the other compnent classes, they inherrit
 sensor class and then when reading the components they return a value generated from their ranges and options"""
 
@@ -54,7 +54,7 @@ class AutomaticToolChanger:
             self.current_tool = random.choice(self.tools)
         return self.current_tool
     
-#--------Machine classes--------
+#-------- Machine classes --------
 """This section a similar theme as above is happening where I have made a machine base class and from
 there have used this and inherited it into other classes for the other 4 machines in the factory"""
 
@@ -113,7 +113,7 @@ class InspectionSystem(Machine):
             "inspection_confidence": confidence
         }
 
-#--------Message class--------
+#-------- Message class --------
 """The section below takes inputs and transforms to document"""
 
 class SimulationMessage:
@@ -134,7 +134,7 @@ class SimulationMessage:
         }
         return json.dumps(payload)
 
-#--------Engine--------
+#-------- Engine --------
 """This section manages creating the factory that holds the machines and sensors, it also has an
 option between simulation data and real data"""
 
@@ -200,12 +200,49 @@ class CNCFactory:
 
 #Not complete yet
 def classify_state(sensors: dict, machine: dict):
+    #Overheating check
+    if sensors["spindle_temp"] >75 and sensors["spindle_temp"] <= 90:
+        return "Maintenance_KG:Possible_Overheating"
     if sensors["spindle_temp"] > 90:
-        return "Maintenance_KG:Spindle_Overheat"
+        #Glitch/firmware injection check
+        if sensors["power_draw"] > 350 and sensors["power_draw"] < 400:
+            return "Cyberattack_KG:Possible_Glitch/Firmware"
+        elif sensors["power_draw"] >= 400:
+            return "Cyberattack_KG:Likely_Glitch/Firmware"
+        #Overheat message return
+        else:
+            return "Maintenance_KG:Spindle_Overheat"
+        
+    #Vibration sabotage
+    if sensors["vibration"] > 1.5 and sensors["vibration"] <= 3.5:
+        return "Cyberattack_KG:Possible_Vibration_Sabotage"
     if sensors["vibration"] > 3.5:
-        return "Cyberattack_KG:Vibration_Sabotage"
+        return "Cyberattack_KG:Likely_Vibration_Sabotage"
+    
+    #Power draw detection
+    if sensors["power_draw"] >= 350 and sensors["power_draw"] < 400:
+        return "PowerDraw_KG:Possible_Elevated_Load"
+    if sensors["power_draw"] >= 400:
+        return "PowerDraw_KG:High_Power_Consumption"
+    
+    #Position encoder
+    EXPECTED_POSITION = {"X": 50.0, "Y": 30.0, "Z": 10.0}
+    #mm difference for warning
+    TOLERANCE_WARNING = 5.0
+    #mm difference for fault
+    TOLERANCE_CRITICAL = 10.0
+    pos = sensors["position"]
+    max_dev = max(abs(pos[axis] - EXPECTED_POSITION[axis]) for axis in ["X", "Y", "Z"])    
+    if max_dev > TOLERANCE_WARNING and max_dev <= TOLERANCE_CRITICAL:
+        return "Maintenance_KG:Minor_Position_Drift"
+    if max_dev > TOLERANCE_CRITICAL:
+        return "Cyberattack_KG:Major_Position_Change"
+    
+    #Tool change
     if machine.get("tool_id") and machine["tool_id"] not in [1, 2, 3]:
         return "Maintenance_KG:Tool_Change"
+    
+    #Inspection system
     if sensors["inspection"] == "FAIL":
         return "Normal_KG:Inspection_Fail"
     return "Normal_KG:Operation_Normal"
@@ -213,7 +250,8 @@ def classify_state(sensors: dict, machine: dict):
 def send_to_KG(payload_json: str, classification: str):
     record = json.loads(payload_json)
     record["kg_node"] = classification
-    print(json.dumps(record))  # Replace with HTTP POST or message queue in real use
+    #Replace with HTTP POST or message queue in real use
+    print(json.dumps(record)) 
 
 # ---- Main Execution ----
 
