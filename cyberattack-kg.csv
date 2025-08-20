@@ -1,0 +1,53 @@
+Source Entity,Relationship,Target Entity
+Firmware Injection,isA,Cyberattack
+Firmware Injection,target,CNC Machine
+Firmware Injection,causes,Firmware Glitch
+Firmware Glitch,isA,Failure Mode
+Firmware Glitch,hasOrigin,Cyberattack
+Firmware Glitch,causes,Overheating
+Firmware Glitch,causes,Sudden Behaviour Deviation
+Sudden Behaviour Deviation,indicates,Cyberattack
+G-code Injection,isA,Cyberattack
+G-code Injection,target,CNC Machine
+G-code Injection,causes,Unexpected Motion
+Unexpected Motion,causes,Imbalance
+G-code Injection,implements,Command and Control
+Command and Control,usesTactic,Execution
+Logic Override,isA,Cyberattack
+Logic Override,target,CNC Machine
+Logic Override,causes,Axis Drift
+Axis Drift,hasOrigin,Logic Override
+Axis Drift,causes,Misalignment
+Logic Override,implements,System Compromise
+System Compromise,usesTactic,Privilege Escalation
+Network Worm,isA,Cyberattack
+Network Worm,target,CNC Network
+Network Worm,implements,Spearphishing Attachment
+Spearphishing Attachment,usesTactic,Initial Access
+Insider Threat,isA,Cyberattack
+Insider Threat,implements,Valid Accounts
+Valid Accounts,usesTactic,Persistence
+sensorDataMasquerade,isA,Attack Technique
+sensorDataMasquerade,implements,Obfuscation
+Obfuscation,usesTactic,Defense Evasion
+firmwareTampering,isA,Attack Technique
+firmwareTampering,implements,Inhibit System Recovery
+Inhibit System Recovery,usesTactic,Impact
+logicOverride,isA,Attack Technique
+CNC Machine,isAffectedBy,G-code Injection
+CNC Machine,isAffectedBy,Firmware Injection
+CNC Machine,isAffectedBy,Logic Override
+Sensor,isAffectedBy,Data Spoofing
+Component,isAffectedBy,Firmware Tampering
+Component,isAffectedBy,Logic Override
+Overheating,isA,Anomaly
+Overheating,hasOrigin,Firmware Glitch
+Excessive Power Usage,isA,Anomaly
+Excessive Power Usage,hasOrigin,Firmware Glitch
+Misalignment,isA,Anomaly
+Misalignment,hasOrigin,Logic Override
+Runtime Behaviour,deviatesFrom,Expected Behaviour
+Anomaly,hasPattern,Sudden
+Anomaly,suggests,Cyberattack
+Firmware Patch,resolves,Firmware Glitch
+Emergency Repair,restores,Normal State

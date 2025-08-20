@@ -1,0 +1,28 @@
+Source Entity,Relationship,Target Entity
+CNC Machine,executes,G-code
+CNC Machine,hasComponent,ATC
+CNC Machine,hasComponent,Spindle
+CNC Machine,isMonitoredBy,Spindle Temperature Sensor
+CNC Machine,isMonitoredBy,Vibration Sensor
+CNC Machine,isMonitoredBy,Position Encoder
+CNC Machine,isMonitoredBy,Power Draw Monitor
+CNC Machine,hasState,Normal
+Sensor,outputs,Live Data
+Sensor,logs,Runtime Behaviour
+Power Draw Monitor,measures,Power Draw
+Position Encoder,monitors,Tool Path Accuracy
+Spindle Temperature Sensor,detects,Overheating
+Vibration Sensor,detects,Abnormal Vibration
+Spindle Temperature Sensor,detects,Anomaly
+Vibration Sensor,detects,Anomaly
+Power Draw Monitor,detects,Anomaly
+Position Encoder,detects,Anomaly
+Factory System,consumes,Stable Power
+Energy Metric,represents,Power Consumption
+Overheating,isA,Anomaly
+Abnormal Vibration,isA,Anomaly
+Excessive Power Usage,isA,Anomaly
+Misalignment,isA,Anomaly
+Anomaly,hasOrigin,Unknown
+Anomaly,requires,Diagnosis
+Runtime Behaviour,deviatesFrom,Expected Behaviour

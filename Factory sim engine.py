@@ -4,6 +4,7 @@ import random
 import time
 import json
 import os
+import csv
 
 #-------- Compnonents and sensor classes --------
 """In this section there is the senor class which acts as a base template for the other compnent classes, they inherrit
@@ -197,13 +198,40 @@ class CNCFactory:
         send_to_KG(msg.to_json(), classification)
 
 # ---- KG Mapping & Output ----
-
 #Not complete yet
+
+def load_kg_csv(file_path):
+    mapping = {}
+    try:
+        with open(file_path, mode='r', encoding='utf-8-sig') as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                source = row["Source entity"].strip()
+                mapping[source] = {
+                    "relationship": row["relationship"].strip(),
+                    "target_entity": row["target entity"].strip()
+                }
+    except FileNotFoundError:
+        print(f"[WARNING] KG file not found: {file_path}")
+    return mapping
+
+#Load all KG mappings
+maintenance_map = load_kg_csv("maintenance-kg.csv")
+normal_map = load_kg_csv("normal-kg.csv")
+cyberattack_map = load_kg_csv("cyberattack-kg.csv")
+
+print(maintenance_map)
+print(normal_map)
+print(cyberattack_map)
+
+
 def classify_state(sensors: dict, machine: dict):
     #Overheating check
-    if sensors["spindle_temp"] >75 and sensors["spindle_temp"] <= 90:
+    if sensors["spindle_temp"] < 75:
+        return "Normal_KG:Temperature_Normal"
+    elif sensors["spindle_temp"] > 75 and sensors["spindle_temp"] <= 90:
         return "Maintenance_KG:Possible_Overheating"
-    if sensors["spindle_temp"] > 90:
+    elif sensors["spindle_temp"] > 90:
         #Glitch/firmware injection check
         if sensors["power_draw"] > 350 and sensors["power_draw"] < 400:
             return "Cyberattack_KG:Possible_Glitch/Firmware"
@@ -214,15 +242,19 @@ def classify_state(sensors: dict, machine: dict):
             return "Maintenance_KG:Spindle_Overheat"
         
     #Vibration sabotage
-    if sensors["vibration"] > 1.5 and sensors["vibration"] <= 3.5:
+    if sensors["vibration"] < 1.5:
+        return "Normal_KG:Vibration_Normal"
+    elif sensors["vibration"] > 1.5 and sensors["vibration"] <= 3.5:
         return "Cyberattack_KG:Possible_Vibration_Sabotage"
-    if sensors["vibration"] > 3.5:
+    elif sensors["vibration"] > 3.5:
         return "Cyberattack_KG:Likely_Vibration_Sabotage"
     
     #Power draw detection
-    if sensors["power_draw"] >= 350 and sensors["power_draw"] < 400:
+    if sensors["power_draw"] < 350:
+        return "Normal_KG:Normal_Power_Consumption"
+    elif sensors["power_draw"] >= 350 and sensors["power_draw"] < 400:
         return "PowerDraw_KG:Possible_Elevated_Load"
-    if sensors["power_draw"] >= 400:
+    elif sensors["power_draw"] >= 400:
         return "PowerDraw_KG:High_Power_Consumption"
     
     #Position encoder
@@ -233,9 +265,11 @@ def classify_state(sensors: dict, machine: dict):
     TOLERANCE_CRITICAL = 10.0
     pos = sensors["position"]
     max_dev = max(abs(pos[axis] - EXPECTED_POSITION[axis]) for axis in ["X", "Y", "Z"])    
-    if max_dev > TOLERANCE_WARNING and max_dev <= TOLERANCE_CRITICAL:
+    if max_dev < TOLERANCE_WARNING and max_dev > TOLERANCE_CRITICAL:
+        return "Normal_KG:Position_Encoder_Good"
+    elif max_dev > TOLERANCE_WARNING and max_dev <= TOLERANCE_CRITICAL:
         return "Maintenance_KG:Minor_Position_Drift"
-    if max_dev > TOLERANCE_CRITICAL:
+    elif max_dev > TOLERANCE_CRITICAL:
         return "Cyberattack_KG:Major_Position_Change"
     
     #Tool change
@@ -251,7 +285,16 @@ def send_to_KG(payload_json: str, classification: str):
     record = json.loads(payload_json)
     record["kg_node"] = classification
     #Replace with HTTP POST or message queue in real use
-    print(json.dumps(record)) 
+    #print(json.dumps(record)) 
+    triple = None
+    if "Maintenance_KG" in classification:
+        triple = maintenance_map.get(classification)
+    elif "Normal_KG" in classification:
+        triple = normal_map.get(classification)
+    elif "Cyberattack_KG" in classification:
+        triple = cyberattack_map.get(classification)
+    record["kg_triple"] = triple
+    print(json.dumps(record))
 
 # ---- Main Execution ----
 

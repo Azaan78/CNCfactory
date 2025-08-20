@@ -1,0 +1,39 @@
+Source Entity,Relationship,Target Entity
+Tool Wear,isA,Failure Mode
+Tool Wear,hasOrigin,Maintenance
+Tool Wear,causes,Imbalance
+Imbalance,isA,Anomaly
+Imbalance,hasOrigin,Tool Wear
+Imbalance,triggers,Tool Replacement
+Spindle Overuse,isA,Failure Mode
+Spindle Overuse,hasOrigin,Maintenance
+Spindle Overuse,causes,Overheating
+Overheating,isA,Anomaly
+Overheating,hasOrigin,Spindle Overuse
+Overheating,triggers,Cooling System Check
+Dull Tool,isA,Failure Mode
+Dull Tool,hasOrigin,Maintenance
+Dull Tool,causes,Excessive Power Usage
+Excessive Power Usage,isA,Anomaly
+Excessive Power Usage,hasOrigin,Dull Tool
+Excessive Power Usage,triggers,Tool Inspection
+Axis Drift,isA,Failure Mode
+Axis Drift,hasOrigin,Maintenance
+Axis Drift,causes,Misalignment
+Misalignment,isA,Anomaly
+Misalignment,hasOrigin,Axis Drift
+Misalignment,triggers,Axis Recalibration
+CNC Machine,hasFailureMode,Tool Wear
+Component,exhibits,Failure Mode
+Component,isAffectedBy,Failure Mode
+Sensor Alert,triggers,Maintenance Event
+Maintenance Event,resolves,Failure Mode
+Emergency Repair,restores,Normal State
+Spindle Temperature Sensor,detects,Overheating
+Vibration Sensor,detects,Imbalance
+Power Draw Monitor,detects,Excessive Power Usage
+Position Encoder,detects,Misalignment
+Runtime Behaviour,deviatesFrom,Expected Behaviour
+Runtime Behaviour,hasPattern,Gradual
+Anomaly,hasPattern,Gradual
+Anomaly,suggests,Maintenance
