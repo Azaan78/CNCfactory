@@ -194,52 +194,79 @@ class CNCFactory:
 
         #3. Package & send (returns packages)
         msg = SimulationMessage(cycle_id, machine_data, sensor_readings)
-        classification = classify_state(sensor_readings, machine_data)
+        classification = classify_state(sensor_readings, machine_data, kg_maps)
         send_to_KG(msg.to_json(), classification)
 
 # ---- KG Mapping & Output ----
 #Not complete yet
 
 def load_kg_csv(file_path):
+    #Initialises hashmap/dictionary
     mapping = {}
     try:
+        #Opens file in read mode
         with open(file_path, mode='r', encoding='utf-8-sig') as file:
-            reader = csv.DictReader(file)
+            #Reads and normalises CSV
+            raw = csv.reader(file)
+            headers = next(raw)
+            headers = [h.strip().lower() for h in headers]
+            file.seek(0)
+            reader = csv.DictReader(file, fieldnames=headers)
+            next(reader)
+            print("CSV Headers (normalized):", headers)
+            #Loops through 
+            row_count = 0
             for row in reader:
-                source = row["Source entity"].strip()
-                mapping[source] = {
-                    "relationship": row["relationship"].strip(),
-                    "target_entity": row["target entity"].strip()
+                row_count += 1
+                #CSV removes uneccessary information and it them checks the row is in a triple format
+                row = { (k or "").strip().lower(): (v or "").strip() for k, v in row.items() }
+                if not row.get("source entity"):
+                    print(f"[WARN] Missing 'Source entity' at CSV line {row_count+1}")
+                    continue
+                if not row.get("relationship") or not row.get("target entity"):
+                    print(f"[WARN] Incomplete triple at CSV line {row_count+1}: {row}")
+                    continue
+                #CSV record put into correct triple format and added to map
+                source = row["source entity"]
+                triple = {
+                    "relationship": row["relationship"],
+                    "target_entity": row["target entity"],
                 }
+                mapping.setdefault(source, []).append(triple)
+            print(f"[INFO] Loaded {row_count} rows; {len(mapping)} unique sources")
+    #If not map is found
     except FileNotFoundError:
         print(f"[WARNING] KG file not found: {file_path}")
     return mapping
 
-#Load all KG mappings
-maintenance_map = load_kg_csv("maintenance-kg.csv")
-normal_map = load_kg_csv("normal-kg.csv")
-cyberattack_map = load_kg_csv("cyberattack-kg.csv")
-
-print(maintenance_map)
-print(normal_map)
-print(cyberattack_map)
-
-
-def classify_state(sensors: dict, machine: dict):
+def classify_state(sensors: dict, machine: dict,  kg_maps: dict):
     #Overheating check
     if sensors["spindle_temp"] < 75:
         return "Normal_KG:Temperature_Normal"
+    
     elif sensors["spindle_temp"] > 75 and sensors["spindle_temp"] <= 90:
         return "Maintenance_KG:Possible_Overheating"
+    
     elif sensors["spindle_temp"] > 90:
         #Glitch/firmware injection check
         if sensors["power_draw"] > 350 and sensors["power_draw"] < 400:
             return "Cyberattack_KG:Possible_Glitch/Firmware"
+        
         elif sensors["power_draw"] >= 400:
-            return "Cyberattack_KG:Likely_Glitch/Firmware"
+            results = [
+            (issue, kg_maps[kg][issue])
+            for kg in ["Maintenance_KG", "Normal_KG", "Cyberattack_KG"]
+            for issue in ["Overheating","Power Draw Monitor","Dull Tool","Excessive Power Usage","Firmware Injection","Firmware Glitch"]
+            if issue in kg_maps[kg]]
+            return "Cyberattack_KG:Likely_Glitch/Firmware",results
+        
         #Overheat message return
         else:
-            return "Maintenance_KG:Spindle_Overheat"
+            results = [
+            kg_maps[kg]["Overheating"]
+            for kg in ["Maintenance_KG", "Normal_KG", "Cyberattack_KG"]
+            if "Overheating" in kg_maps[kg]]
+        return "Maintenance_KG:Spindle_Overheat",results
         
     #Vibration sabotage
     if sensors["vibration"] < 1.5:
@@ -247,7 +274,12 @@ def classify_state(sensors: dict, machine: dict):
     elif sensors["vibration"] > 1.5 and sensors["vibration"] <= 3.5:
         return "Cyberattack_KG:Possible_Vibration_Sabotage"
     elif sensors["vibration"] > 3.5:
-        return "Cyberattack_KG:Likely_Vibration_Sabotage"
+        results = [
+            (issue, kg_maps[kg][issue])
+            for kg in ["Maintenance_KG", "Normal_KG", "Cyberattack_KG"]
+            for issue in ["Vibration Sensor","Vibration Sensor","Misalignment"]
+            if issue in kg_maps[kg]]
+        return "Cyberattack_KG:Likely_Vibration_Sabotage",results
     
     #Power draw detection
     if sensors["power_draw"] < 350:
@@ -255,7 +287,12 @@ def classify_state(sensors: dict, machine: dict):
     elif sensors["power_draw"] >= 350 and sensors["power_draw"] < 400:
         return "PowerDraw_KG:Possible_Elevated_Load"
     elif sensors["power_draw"] >= 400:
-        return "PowerDraw_KG:High_Power_Consumption"
+        results = [
+            (issue, kg_maps[kg][issue])
+            for kg in ["Maintenance_KG", "Normal_KG", "Cyberattack_KG"]
+            for issue in ["Power Draw Monitor","Excessive Power Usage"]
+            if issue in kg_maps[kg]]
+        return "PowerDraw_KG:High_Power_Consumption",results
     
     #Position encoder
     EXPECTED_POSITION = {"X": 50.0, "Y": 30.0, "Z": 10.0}
@@ -324,6 +361,17 @@ machines = [
     ConveyorBelt("Conveyor_1"),
     InspectionSystem("Inspection_Station")
 ]
+
+#Load all KG mappings
+maintenance_map = load_kg_csv("maintenance-kg.csv")
+normal_map = load_kg_csv("normal-kg.csv")
+cyberattack_map = load_kg_csv("cyberattack-kg.csv")
+
+kg_maps = {
+    "Normal_KG": normal_map,
+    "Maintenance_KG": maintenance_map,
+    "Cyberattack_KG": cyberattack_map
+}
 
 #Instantiating factory using list of machines and sensory
 factory = CNCFactory(machines, sensors)
